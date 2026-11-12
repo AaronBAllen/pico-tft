@@ -43,7 +43,7 @@
 #define TFT_RAW_WIDTH 176
 #define TFT_RAW_HEIGHT 220
 #error "ILI9225 driver is currently broken"
-#elif TFT_DRIVER == TFT_DRIVER_ILI9341
+#else //TFT_DRIVER == TFT_DRIVER_ILI9341
 #define TFT_RAW_WIDTH 240
 #define TFT_RAW_HEIGHT 320
 #endif
@@ -193,6 +193,7 @@ inline static void __unused tft_draw_pixel(int x, int y, int color)
  */
 void tft_draw_rect(int x0, int y0, int x1, int y1, int color);
 
+void tft_draw_colorful_box(int x0, int y0, int x1, int y1);
 /*
  * Paint the whole screen with a single color.
  */

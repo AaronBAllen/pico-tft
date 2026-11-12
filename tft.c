@@ -375,21 +375,22 @@ void tft_sync(void)
 	tft_begin_sync();
 	select_chip(true);
 
-	const uint8_t *inptr = tft_committed;
+	const uint8_t *inptr = tft_committed;//the array of colors that covers the whole screen 
+											//referring to the color pallette
 
-	for (int y = 0; y < TFT_RAW_HEIGHT / TFT_SCALE; y++) {
-		uint16_t *buf = txbuf[y & 1];
-		uint16_t *bufptr = buf;
+	for (int y = 0; y < TFT_RAW_HEIGHT / TFT_SCALE; y++) { //y from zero to screen height divided by scale
+		uint16_t *buf = txbuf[y & 1];  //select a buffer based on even or odd lines to fill in
+		uint16_t *bufptr = buf;        //provide a pointer that moves so the other can be stationary
 
-		for (int x = 0; x < TFT_RAW_WIDTH / TFT_SCALE; x++) {
-			uint16_t color = tft_palette[*inptr++];
+		for (int x = 0; x < TFT_RAW_WIDTH / TFT_SCALE; x++) {  //stepping the X's across
+			volatile uint16_t color = tft_palette[*inptr++];    //starting at the current location read the reference color number one byte
 
-			for (int i = 0; i < TFT_SCALE; i++)
+			for (int i = 0; i < TFT_SCALE; i++)  //write it over again scale number of times to build bigger blocks
 				*bufptr++ = color;
 		}
 
-		for (int i = 0; i < TFT_SCALE; i++)
-			write_buffer_dma(buf, TFT_RAW_WIDTH);
+		for (int i = 0; i < TFT_SCALE; i++)  //redraw the same line scale number of times to build bigger blocks
+			write_buffer_dma(buf, TFT_RAW_WIDTH);//buf must increment in there somewhere
 	}
 
 	tft_dma_channel_wait_for_finish_blocking(dma_ch_spi);
@@ -435,6 +436,8 @@ void tft_draw_rect(int x0, int y0, int x1, int y1, int color)
 
 void tft_fill(int color)
 {
+	memset(tft_input, color, TFT_WIDTH * TFT_HEIGHT);
+	tft_swap_buffers();
 	memset(tft_input, color, TFT_WIDTH * TFT_HEIGHT);
 }
 
@@ -515,4 +518,35 @@ void tft_draw_string_center(int x, int y, int color, const char *str)
 
 	for (int i = 0; i < len; i++)
 		tft_draw_glyph(x + i * 8, y, color, str[i]);
+}
+void tft_draw_colorful_box(int x0, int y0, int x1, int y1)
+{
+	if (x0 > x1) {
+		int tmp = x0;
+		x0 = x1;
+		x1 = tmp;
+	}
+
+	if (y0 > y1) {
+		int tmp = y0;
+		y0 = y1;
+		y1 = tmp;
+	}
+	uint8_t color = 0;
+	#if TFT_SWAP_XY
+		for (int x = x0; x <= x1; x++)
+			for (int y = y0; y <= y1; y++)
+			{
+				color = x+y % 256;
+				tft_draw_pixel(x, y, color );
+			}
+	#else    // I am not convinced this work as intended
+		for (int y = y0; y <= y1; y++)
+			for (int x = x0; x <= x1; x++)
+			{
+				color = x+y % 256;
+				tft_draw_pixel(x, y, color);
+			}	
+	#endif
+	
 }
